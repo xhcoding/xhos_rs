@@ -1,0 +1,9 @@
+[workspace]
+members = ["runner", "boot", "kernel"]
+default-members = ["runner"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
