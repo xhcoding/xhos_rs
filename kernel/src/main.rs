@@ -2,24 +2,32 @@
 #![no_main]
 
 use core::panic::PanicInfo;
+use noto_sans_mono_bitmap::{FontWeight, RasterHeight};
+
+mod framebuffer;
+use framebuffer::{Font, WRITER};
+mod macros;
 
 // panic 时调用这个函数
 // ! 表示这个函数是一个发散函数，从不返回
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
     loop {}
+}
+
+fn init_framebuffer(bootinfo: &'static mut bootloader_api::BootInfo) {
+    let font = Font::new(RasterHeight::Size16, FontWeight::Regular);
+    WRITER
+        .lock()
+        .init(bootinfo.framebuffer.as_mut().unwrap(), font);
 }
 
 bootloader_api::entry_point!(main);
 
 pub fn main(bootinfo: &'static mut bootloader_api::BootInfo) -> ! {
-    if let Some(framebuffer) = bootinfo.framebuffer.as_mut() {
-        let mut value = 0x90;
-        for byte in framebuffer.buffer_mut() {
-            *byte = value;
-            value = value.wrapping_add(2);
-        }
-    }
+    init_framebuffer(bootinfo);
 
-    loop {}
+    println!("Hello World!\nHello xhos!");
+    panic!("This is panic")
 }
