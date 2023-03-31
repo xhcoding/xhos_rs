@@ -3,7 +3,7 @@
 
 use regex::Regex;
 use std::path::Path;
-use std::process::Command;
+use std::process::{self, Command};
 
 fn build_test_kernel() -> Option<String> {
     let mut cmd = Command::new("cargo");
@@ -59,14 +59,29 @@ fn run_qemu() {
     let uefi_image = kernel_dir.join("bootimage-uefi-xhos.img");
     let ovme_image = kernel_dir.join("OVMF-pure-efi.fd");
 
-    let status = Command::new("qemu-system-x86_64")
-        .arg("-drive")
+    let mut cmd = Command::new("qemu-system-x86_64");
+
+    cmd.arg("-drive")
         .arg(format!("format=raw,file={}", uefi_image.display()))
         .arg("-bios")
         .arg(ovme_image)
-        .status()
-        .unwrap();
-    println!("Status: {}", status);
+        .arg("-device")
+        .arg("isa-debug-exit,iobase=0xf4,iosize=0x04")
+        .arg("-serial")
+        .arg("stdio");
+
+    if cfg!(test) {
+        cmd.arg("-display").arg("none");
+    }
+    
+    let status = cmd.status().unwrap();
+    
+    let code = status.code().unwrap();
+    if code == 33 {
+        process::exit(0);
+    } else {
+        process::exit(code);
+    }
 }
 
 fn main() {
