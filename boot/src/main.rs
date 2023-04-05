@@ -1,21 +1,24 @@
-use bootloader::UefiBoot;
-use std::{path::Path, process::exit, env::args};
+use bootloader::{BootConfig, UefiBoot};
+use std::{env::args, path::Path, process::exit};
 
 pub fn main() {
-    // 镜像生成的目录为根目录
     let kernel_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-    let uefi_image = kernel_dir.join("bootimage-uefi-xhos.img");
-
-    // let kernel_binary = Path::new(env!("CARGO_BIN_FILE_KERNEL_kernel"));
     let kernel_binary = kernel_dir.join(args().skip(1).next().unwrap());
-    println!("kernel binary: {}", kernel_binary.display());
+    let uefi_image = kernel_dir.join("images").join(format!(
+        "bootimage-uefi-{}.img",
+        kernel_binary.file_stem().unwrap().to_str().unwrap()
+    ));
 
-    
-    // UEFI 启动镜像生成器
-    let uefi = UefiBoot::new(&kernel_binary);
+    let mut config = BootConfig::default();
+    config.serial_logging = false;
+
+    let mut uefi = UefiBoot::new(&kernel_binary);
+
+    uefi.set_boot_config(&config);
 
     if let Err(e) = uefi.create_disk_image(&uefi_image) {
         eprintln!("{:#?}", &e);
         exit(1)
     }
+    println!("{}", uefi_image.display());
 }

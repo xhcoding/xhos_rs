@@ -5,9 +5,9 @@ use regex::Regex;
 use std::path::Path;
 use std::process::{self, Command};
 
-fn build_test_kernel() -> Option<String> {
+fn build_test_kernel() -> Vec<String> {
     let mut cmd = Command::new("cargo");
-
+    let mut targets = Vec::new();
     cmd.args([
         "test",
         "--package",
@@ -23,17 +23,16 @@ fn build_test_kernel() -> Option<String> {
         let stderr = String::from_utf8(output.stderr).expect("Get stderr failed");
 
         let re = Regex::new(r".*(target[\\/].*)\).*").unwrap();
-        let mut target: Option<String> = None;
         for cap in re.captures_iter(stderr.as_str()) {
-            target = Some(String::from(&cap[1]));
+            targets.push(String::from(&cap[1]));
         }
-        return target;
+        return targets;
     } else {
         panic!("Failed to build test kernel");
     }
 }
 
-fn build_run_kernel() -> Option<String> {
+fn build_run_kernel() -> Vec<String> {
     let mut cmd = Command::new("cargo");
     cmd.args([
         "build",
@@ -44,62 +43,70 @@ fn build_run_kernel() -> Option<String> {
     ]);
 
     cmd.output().expect("Failed to build test kernel");
-    return Some(String::from("target/x86_64-unknown-none/debug/kernel"));
+    return vec![String::from("target/x86_64-unknown-none/debug/kernel")];
 }
 
-fn build_boot(target: String) {
-    let mut cmd = Command::new("cargo");
-    cmd.args(["run", "--package", "boot", target.as_str()]);
+fn build_boot(targets: Vec<String>) -> Vec<String> {
+    let mut paths = Vec::new();
+    for target in targets {
+        let mut cmd = Command::new("cargo");
+        cmd.args(["run", "--package", "boot", target.as_str()]);
 
-    cmd.output().unwrap();
+        paths.push(String::from(
+            String::from_utf8(cmd.output().unwrap().stdout)
+                .unwrap()
+                .trim(),
+        ));
+    }
+    return paths;
 }
 
-fn run_qemu() {
+fn run_qemu(images: Vec<String>) {
     let kernel_dir = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-    let uefi_image = kernel_dir.join("bootimage-uefi-xhos.img");
     let ovme_image = kernel_dir.join("OVMF-pure-efi.fd");
 
-    let mut cmd = Command::new("qemu-system-x86_64");
+    for image in images {
+        let mut cmd = Command::new("qemu-system-x86_64");
 
-    cmd.arg("-drive")
-        .arg(format!("format=raw,file={}", uefi_image.display()))
-        .arg("-bios")
-        .arg(ovme_image)
-        .arg("-device")
-        .arg("isa-debug-exit,iobase=0xf4,iosize=0x04")
-        .arg("-serial")
-        .arg("stdio");
+        cmd.arg("-drive")
+            .arg(format!("format=raw,file={}", image))
+            .arg("-bios")
+            .arg(&ovme_image)
+            .arg("-device")
+            .arg("isa-debug-exit,iobase=0xf4,iosize=0x04")
+            .arg("-serial")
+            .arg("stdio");
 
-    if cfg!(test) {
-        cmd.arg("-display").arg("none");
+        if cfg!(test) {
+            cmd.arg("-display").arg("none");
+        }
+
+        let status = cmd.status().unwrap();
+
+        let code = status.code().unwrap();
+        if code != 33 {
+            process::exit(code);
+        }
     }
-    
-    let status = cmd.status().unwrap();
-    
-    let code = status.code().unwrap();
-    if code == 33 {
-        process::exit(0);
-    } else {
-        process::exit(code);
-    }
+    process::exit(0);
 }
 
 fn main() {
-    let target;
+    let targets;
     if cfg!(test) {
         println!("Build test kernel");
-        target = build_test_kernel();
+        targets = build_test_kernel();
     } else {
         println!("Build run kernel");
-        target = build_run_kernel();
+        targets = build_run_kernel();
     }
 
-    println!("Build bootimage");
+    println!("Build bootimage for {:?}", targets);
 
-    build_boot(target.unwrap());
+    let paths = build_boot(targets);
 
-    println!("Run qemu");
-    run_qemu();
+    println!("Run images: {:?}", paths);
+    run_qemu(paths);
 }
 
 #[cfg(test)]
