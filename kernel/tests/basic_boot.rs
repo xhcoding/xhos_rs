@@ -5,12 +5,12 @@
 #![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
-use kernel::{init_framebuffer, print, println};
+use kernel::{init, print, println};
 
 bootloader_api::entry_point!(main);
 
 pub fn main(bootinfo: &'static mut bootloader_api::BootInfo) -> ! {
-    init_framebuffer(bootinfo);
+    init(bootinfo);
     println!("Hello this is basic boot test.");
     #[cfg(test)]
     test_main();

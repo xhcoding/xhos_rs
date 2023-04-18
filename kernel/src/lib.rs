@@ -3,12 +3,14 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(abi_x86_interrupt)]
 
 use core::panic::PanicInfo;
 use noto_sans_mono_bitmap::{FontWeight, RasterHeight};
 
 pub mod framebuffer;
 pub mod serial;
+pub mod interrupts;
 
 pub trait Testable {
     fn run(&self) -> ();
@@ -57,7 +59,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
-pub fn init_framebuffer(bootinfo: &'static mut bootloader_api::BootInfo) {
+fn init_framebuffer(bootinfo: &'static mut bootloader_api::BootInfo) {
     use crate::framebuffer::{Font, WRITER};
 
     let font = Font::new(RasterHeight::Size16, FontWeight::Regular);
@@ -66,12 +68,17 @@ pub fn init_framebuffer(bootinfo: &'static mut bootloader_api::BootInfo) {
         .init(bootinfo.framebuffer.as_mut().unwrap(), font);
 }
 
+pub fn init(bootinfo: &'static mut bootloader_api::BootInfo) {
+    init_framebuffer(bootinfo);
+    interrupts::init_idt();
+}
+
 #[cfg(test)]
 bootloader_api::entry_point!(main);
 
 #[cfg(test)]
 pub fn main(bootinfo: &'static mut bootloader_api::BootInfo) -> ! {
-    init_framebuffer(bootinfo);
+    init(bootinfo);
     println!("This is test");
     test_main();
 

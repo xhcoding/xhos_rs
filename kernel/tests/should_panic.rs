@@ -3,12 +3,12 @@
 
 use core::panic::PanicInfo;
 
-use kernel::{exit_qemu, init_framebuffer, serial_println, QemuExitCode};
+use kernel::{exit_qemu, init, serial_println, QemuExitCode};
 
 bootloader_api::entry_point!(main);
 
 pub fn main(bootinfo: &'static mut bootloader_api::BootInfo) -> ! {
-    init_framebuffer(bootinfo);
+    init(bootinfo);
 
     should_fail();
 
