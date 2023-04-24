@@ -11,6 +11,7 @@ use noto_sans_mono_bitmap::{FontWeight, RasterHeight};
 pub mod framebuffer;
 pub mod serial;
 pub mod interrupts;
+pub mod gdt;
 
 pub trait Testable {
     fn run(&self) -> ();
@@ -70,6 +71,7 @@ fn init_framebuffer(bootinfo: &'static mut bootloader_api::BootInfo) {
 
 pub fn init(bootinfo: &'static mut bootloader_api::BootInfo) {
     init_framebuffer(bootinfo);
+    gdt::init();
     interrupts::init_idt();
 }
 

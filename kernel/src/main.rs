@@ -10,12 +10,11 @@ use kernel::{init, print, println};
 
 bootloader_api::entry_point!(main);
 
+
 pub fn main(bootinfo: &'static mut bootloader_api::BootInfo) -> ! {
     init(bootinfo);
 
     println!("Hello world, my name is xhos!");
-
-    x86_64::instructions::interrupts::int3();
     
     #[cfg(test)]
     test_main();

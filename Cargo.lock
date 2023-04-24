@@ -464,6 +464,7 @@ dependencies = [
  "noto-sans-mono-bitmap",
  "spin",
  "uart_16550",
+ "volatile",
  "x86_64",
 ]
 
